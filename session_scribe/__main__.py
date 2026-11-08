@@ -4,6 +4,7 @@
     python -m session_scribe check           test Discord + audio (milestone 1)
     python -m session_scribe transcribe DIR  transcribe a session folder
     python -m session_scribe relabel DIR     rebuild transcript.md after editing tags
+    python -m session_scribe shortcut        recreate the Start Menu shortcut
 """
 
 from __future__ import annotations
@@ -145,8 +146,14 @@ def main(argv=None) -> int:
     t.add_argument("--model", default=None)
     r = sub.add_parser("relabel", help="rebuild transcript.md from cached words")
     r.add_argument("dir")
+    sub.add_parser("shortcut", help="(re)create the Start Menu shortcut")
     args = p.parse_args(argv)
 
+    if args.cmd == "shortcut":
+        from . import windows
+        path = windows.ensure_shortcut(force=True)
+        print(f"Created {path}" if path else "Could not create the shortcut (see the log).")
+        return 0 if path else 1
     if args.cmd == "check":
         return cmd_check(args)
     if args.cmd == "transcribe":

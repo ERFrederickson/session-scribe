@@ -119,3 +119,6 @@ dialog .panel { display: grid; gap: 10px; min-height: 220px; align-content: star
 .campaigns aside form input { width: 0; }
 th { white-space: nowrap; }
 #campaign-players td:first-child { width: 28%; }
+
+h1 { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+.logo { width: 26px; height: 26px; }

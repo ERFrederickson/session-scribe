@@ -36,7 +36,24 @@ Create the application while logged in as the same Discord account you play on.
 3. In the app, click **Settings**, paste the Client ID and Client Secret, and save.
 4. Join a voice channel in Discord and click **Connect to Discord**. Discord shows a popup asking you to authorize the app. Approve it once and the app remembers you.
 
-### 3. Test it (recommended before a real session)
+### 3. Pin it to your taskbar
+
+The first time the app opens, it adds **Session Scribe** to your Start Menu with its own icon. To pin it:
+
+1. Open the Start Menu and search for **Session Scribe**.
+2. Right-click it and choose **Pin to taskbar** (or **Pin to Start**).
+
+From then on, open it from the taskbar like any other app. You don't need `Session Scribe.bat` anymore. After a `git pull` that adds new packages, the app installs them itself when it starts, in a console window that closes when it's done.
+
+If the shortcut ever goes missing, or you move the session-scribe folder, run:
+
+```
+.venv\Scripts\python -m session_scribe shortcut
+```
+
+If you moved the folder, unpin the old taskbar icon and pin the new Start Menu entry.
+
+### 4. Test it (recommended before a real session)
 
 Join a voice channel with someone, then double-click **`Check Setup.bat`**. It:
 

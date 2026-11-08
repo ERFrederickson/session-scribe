@@ -117,18 +117,25 @@ def setup_logging() -> Path:
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-        handlers=[logging.FileHandler(log_path, encoding="utf-8"), logging.StreamHandler()],
+        handlers=[logging.FileHandler(log_path, encoding="utf-8")]
+        + ([logging.StreamHandler()] if sys.stderr else []),  # pythonw has no console
     )
     return log_path
 
 
 def main() -> None:
-    import webview  # pywebview
+    from . import windows
 
     setup_logging()
+    windows.ensure_packages()   # before importing anything that might have changed
+    windows.set_app_id()        # so the window groups under the pinned taskbar icon
+    windows.ensure_shortcut()
+
+    import webview  # pywebview
+
     controller = Controller(Config())
     window = webview.create_window(
-        "Session Scribe",
+        windows.APP_NAME,
         url=str(UI_DIR / "index.html"),
         js_api=Api(controller),
         width=980,
@@ -143,4 +150,5 @@ def main() -> None:
         return True
 
     window.events.closing += on_closing
+    window.events.shown += lambda: windows.set_window_icon(windows.APP_NAME)
     webview.start()
