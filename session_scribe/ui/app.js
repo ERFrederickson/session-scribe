@@ -19,6 +19,11 @@ function fmtDuration(sec) {
   return h ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}m`;
 }
 
+// Like node.replaceChildren, but skips null/undefined instead of printing "null".
+function fill(node, ...children) {
+  node.replaceChildren(...children.filter((c) => c != null && c !== false));
+}
+
 function el(tag, attrs = {}, ...children) {
   const e = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
@@ -104,7 +109,7 @@ function renderPeople(s) {
               input, box, nameCell };
       rows.set(p.id, row);
     }
-    row.nameCell.replaceChildren(p.name,
+    fill(row.nameCell, p.name,
       p.is_self ? el("span", { class: "tag" }, "you") : null,
       p.is_bot ? el("span", { class: "tag" }, "bot") : null);
     if (document.activeElement !== row.input) row.input.value = p.character || "";
@@ -171,7 +176,7 @@ function renderJobs(s) {
     }
     prog.hidden = false;
     const pct = Math.round(job.progress * 100);
-    prog.replaceChildren(
+    fill(prog,
       el("div", {}, el("i", { style: `width:${pct}%` })),
       `${job.status === "error" ? "Error: " : ""}${job.message} ${job.status === "error" ? "" : `(${pct}%)`}`,
       job.status === "running" || job.status === "queued"

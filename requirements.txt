@@ -2,4 +2,4 @@
 numpy>=1.26
 PyAudioWPatch>=0.2.12
 pywebview>=5.0
-faster-whisper>=1.1
+faster-whisper>=1.1.1

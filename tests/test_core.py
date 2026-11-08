@@ -104,6 +104,33 @@ class AttributionTests(unittest.TestCase):
         self.assertEqual(attr.pauses(self.events()), [(6.0, 900)])
 
 
+class AudioLoadTests(unittest.TestCase):
+    def _wav(self, d, rate, signal):
+        path = Path(d) / "a_000.wav"
+        with wave.open(str(path), "wb") as w:
+            w.setnchannels(1); w.setsampwidth(2); w.setframerate(rate)
+            w.writeframes((signal * 16000).astype(np.int16).tobytes())
+        return path
+
+    def test_resample_48k_keeps_speech_band_and_drops_aliasing(self):
+        rate = 48000
+        t = np.arange(rate * 2) / rate
+        with tempfile.TemporaryDirectory() as d:
+            speech = transcribe.load_wav_16k(self._wav(d, rate, np.sin(2 * np.pi * 1000 * t)))
+            self.assertEqual(len(speech), 32000)
+            self.assertEqual(speech.dtype, np.float32)
+            self.assertGreater(np.abs(speech[1000:-1000]).max(), 0.4)
+            high = transcribe.load_wav_16k(self._wav(d, rate, np.sin(2 * np.pi * 12000 * t)))
+            self.assertLess(np.abs(high[1000:-1000]).max(), 0.02)
+
+    def test_odd_rate(self):
+        rate = 44100
+        t = np.arange(rate) / rate
+        with tempfile.TemporaryDirectory() as d:
+            out = transcribe.load_wav_16k(self._wav(d, rate, np.sin(2 * np.pi * 440 * t)))
+            self.assertEqual(len(out), 16000)
+
+
 class TranscriptTests(unittest.TestCase):
     def test_end_to_end_from_cache(self):
         with tempfile.TemporaryDirectory() as d:

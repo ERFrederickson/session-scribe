@@ -51,6 +51,50 @@ def build_prompt(session: Session, glossary: str) -> str:
     return ("A tabletop roleplaying game session. Names: " + ", ".join(words) + ".") if words else ""
 
 
+# ------------------------------------------------------------- audio input --
+
+WHISPER_RATE = 16000
+
+
+def _lowpass_kernel(cutoff: float, taps: int = 101):
+    """Windowed-sinc low-pass filter; cutoff is a fraction of the sample rate."""
+    import numpy as np
+
+    n = np.arange(taps) - (taps - 1) / 2
+    h = np.sinc(2 * cutoff * n) * np.hamming(taps)
+    return (h / h.sum()).astype(np.float32)
+
+
+def load_wav_16k(path: Path):
+    """Read one of our mono 16-bit WAV chunks as float32 audio at 16 kHz.
+
+    We decode the WAV ourselves instead of letting faster-whisper do it, so
+    transcription doesn't depend on which PyAV version pip happened to install.
+    """
+    import wave
+
+    import numpy as np
+
+    with wave.open(str(path), "rb") as w:
+        rate, channels, width = w.getframerate(), w.getnchannels(), w.getsampwidth()
+        raw = w.readframes(w.getnframes())
+    if width != 2:
+        raise ValueError(f"{path.name}: expected 16-bit audio, got {8 * width}-bit")
+    audio = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+    if channels > 1:
+        audio = audio[: len(audio) - len(audio) % channels].reshape(-1, channels).mean(axis=1)
+    if rate == WHISPER_RATE or len(audio) == 0:
+        return audio
+    if rate > WHISPER_RATE:
+        # Remove everything above 8 kHz first so downsampling doesn't alias.
+        audio = np.convolve(audio, _lowpass_kernel(0.45 * WHISPER_RATE / rate), mode="same")
+    if rate % WHISPER_RATE == 0:
+        return np.ascontiguousarray(audio[:: rate // WHISPER_RATE])
+    n_out = int(len(audio) * WHISPER_RATE / rate)
+    positions = np.arange(n_out, dtype=np.float64) * (rate / WHISPER_RATE)
+    return np.interp(positions, np.arange(len(audio)), audio).astype(np.float32)
+
+
 # ------------------------------------------------------------- whisper step --
 
 def transcribe_audio(session: Session, model_name: str = "medium.en", language: str = "en",
@@ -84,7 +128,7 @@ def transcribe_audio(session: Session, model_name: str = "medium.en", language: 
         label = f"{track} part {i}/{len(jobs)}"
         progress(done / total, f"Transcribing {label}")
         segments, info = model.transcribe(
-            str(chunk),
+            load_wav_16k(chunk),
             language=language or None,
             word_timestamps=True,
             vad_filter=True,
