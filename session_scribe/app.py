@@ -61,8 +61,8 @@ class Api:
     def sessions(self):
         return self._c.sessions()
 
-    def transcribe(self, session_dir):
-        self._c.queue_transcription(session_dir)
+    def transcribe(self, session_dir, fresh=False):
+        self._c.queue_transcription(session_dir, bool(fresh))
 
     def cancel_transcription(self, session_dir):
         self._c.cancel_transcription(session_dir)

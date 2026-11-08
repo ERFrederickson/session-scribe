@@ -40,7 +40,7 @@ class GpuFallbackTest(unittest.TestCase):
             for i in range(2):
                 with wave.open(str(s.audio_dir / f"discord_00{i}.wav"), "wb") as w:
                     w.setnchannels(1); w.setsampwidth(2); w.setframerate(48000)
-                    w.writeframes(np.zeros(48000, dtype=np.int16).tobytes())
+                    w.writeframes(np.full(48000, 500, dtype=np.int16).tobytes())
             msgs = []
             transcribe.transcribe_audio(s, progress=lambda f, m: msgs.append(m))
             self.assertEqual(created, ["auto", "cpu"])  # CPU model loaded once, reused

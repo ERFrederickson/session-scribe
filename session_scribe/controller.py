@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import shutil
 import logging
 import threading
 import time
@@ -355,10 +356,13 @@ class Controller:
 
     # ======================================================== transcription ==
 
-    def queue_transcription(self, session_dir: str) -> None:
+    def queue_transcription(self, session_dir: str, fresh: bool = False) -> None:
         with self.lock:
             if session_dir in self._job_queue or self.jobs.get(session_dir, {}).get("status") == "running":
                 return
+            if fresh:
+                # Re-transcribe from scratch (e.g. after an app update or model change).
+                shutil.rmtree(Path(session_dir) / "transcribe_cache", ignore_errors=True)
             self.jobs[session_dir] = {"status": "queued", "progress": 0.0, "message": "Waiting"}
             self._job_queue.append(session_dir)
             if not self._job_thread or not self._job_thread.is_alive():

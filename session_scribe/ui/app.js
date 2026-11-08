@@ -153,7 +153,7 @@ function sessionRow(s) {
   }
   if (s.status !== "recording" && s.status !== "failed") {
     actions.append(el("button", { class: s.has_transcript ? "secondary" : "",
-      onclick: () => { api.transcribe(s.dir); setTimeout(refresh, 200); } },
+      onclick: () => { api.transcribe(s.dir, s.has_transcript); setTimeout(refresh, 200); } },
       s.has_transcript ? "Re-transcribe" : "Transcribe"));
   }
   actions.append(el("button", { class: "ghost", onclick: () => api.open_path(s.dir) }, "Folder"));

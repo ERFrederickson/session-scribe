@@ -204,24 +204,73 @@ def transcribe_audio(session: Session, model_name: str = "medium.en", language: 
     progress(1.0, "Audio transcribed")
 
 
+# Whisper decodes 30-second windows and sometimes stops early inside one,
+# silently skipping the rest of the window. So we feed it windows ourselves and
+# always start the next window right after the last word it actually returned.
+WINDOW_SECONDS = 28.0
+# Words this close to the end of a window may be cut off mid-word; redo them in
+# the next window instead of trusting them.
+WINDOW_TAIL = 2.0
+MIN_ADVANCE = 1.0
+MAX_GAIN = 8.0
+
+
+def _normalize(piece):
+    """Bring quiet audio (e.g. a webcam mic) up to a healthy level."""
+    import numpy as np
+
+    peak = float(np.percentile(np.abs(piece), 99.9)) if len(piece) else 0.0
+    if peak <= 1e-4:
+        return piece
+    gain = min(MAX_GAIN, 0.5 / peak)
+    if gain <= 1.0:
+        return piece
+    return np.clip(piece * gain, -1.0, 1.0).astype(np.float32)
+
+
 def _transcribe_chunk(model, audio, language, prompt, report, cancel) -> list[dict]:
-    segments, info = model.transcribe(
-        audio,
-        language=language or None,
-        word_timestamps=True,
-        vad_filter=True,
-        condition_on_previous_text=False,
-        initial_prompt=prompt,
-    )
-    words = []
+    rate = WHISPER_RATE
+    total = len(audio) / rate
+    cursor = 0.0
+    words: list[dict] = []
     report(0.0)
-    for seg in segments:
-        for w in seg.words or []:
-            words.append({"start": round(w.start, 3), "end": round(w.end, 3), "text": w.word})
-        if info.duration:
-            report(min(1.0, seg.end / info.duration))
+    while cursor < total - 0.3:
         if cancel():
             raise _Cancelled()
+        end = min(total, cursor + WINDOW_SECONDS)
+        final = end >= total - 0.01
+        piece = audio[int(cursor * rate):int(end * rate)]
+        if not piece.any():  # padded silence: nothing to hear
+            cursor = end
+            report(cursor / total)
+            continue
+        segments, _info = model.transcribe(
+            _normalize(piece),
+            language=language or None,
+            word_timestamps=True,
+            vad_filter=True,
+            condition_on_previous_text=False,
+            initial_prompt=prompt,
+        )
+        got = []
+        for seg in segments:
+            for w in seg.words or []:
+                got.append({"start": round(cursor + w.start, 3), "end": round(cursor + w.end, 3),
+                            "text": w.word})
+            if cancel():
+                raise _Cancelled()
+        if not got:
+            cursor = end
+            report(cursor / total)
+            continue
+        if not final:
+            got = [w for w in got if w["end"] <= end - WINDOW_TAIL] or got
+        words.extend(got)
+        # Even in the last window, carry on after the last word: if Whisper
+        # stopped early we go round again; if it was just silence, the next
+        # pass finds nothing and the loop ends.
+        cursor = max(got[-1]["end"], cursor + MIN_ADVANCE)
+        report(min(1.0, cursor / total))
     return words
 
 
