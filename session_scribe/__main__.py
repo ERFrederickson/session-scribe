@@ -63,7 +63,7 @@ async def _check_discord(config: Config, seconds: int) -> bool:
         await rpc.close()
 
 
-def _check_audio(seconds: int) -> bool:
+def _check_audio(seconds: int, settings) -> bool:
     import numpy as np
 
     from .audio import Recorder
@@ -74,7 +74,7 @@ def _check_audio(seconds: int) -> bool:
     out = Path(tempfile.mkdtemp(prefix="session-scribe-check-"))
     try:
         clock.start()
-        tracks = rec.start(out)
+        tracks = rec.start(out, settings.record_mic, settings.mic_device, settings.output_device)
     except Exception as e:
         print(f"  !   Could not open audio devices: {e}")
         return False
@@ -108,7 +108,7 @@ def cmd_check(args) -> int:
     print("\n1. Discord connection and speaking events")
     d = asyncio.run(_check_discord(config, args.seconds))
     print("\n2. Audio capture")
-    a = _check_audio(min(args.seconds, 10))
+    a = _check_audio(min(args.seconds, 10), config.settings)
     print("\nAll good." if d and a else "\nSome checks need attention (see the ! lines above).")
     return 0 if d and a else 1
 

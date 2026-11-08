@@ -78,6 +78,13 @@ class Api:
         else:
             subprocess.Popen(["xdg-open", path])
 
+    def audio_devices(self):
+        try:
+            from .audio import list_devices
+            return list_devices()
+        except Exception as e:  # e.g. not on Windows
+            return {"mics": [], "outputs": [], "error": str(e)}
+
     def save_settings(self, values):
         self._c.save_settings(values or {})
 

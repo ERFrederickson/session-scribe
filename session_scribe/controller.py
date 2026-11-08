@@ -278,7 +278,9 @@ class Controller:
             self.recorder = Recorder(self.clock)
             self.clock.start()
             try:
-                session.meta["tracks"] = self.recorder.start(session.audio_dir, self.config.settings.record_mic)
+                st = self.config.settings
+                session.meta["tracks"] = self.recorder.start(
+                    session.audio_dir, st.record_mic, st.mic_device, st.output_device)
             except Exception as e:
                 log.exception("Could not start recording")
                 self.rec_error = f"Could not start recording: {e}"

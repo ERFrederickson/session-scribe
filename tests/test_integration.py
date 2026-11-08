@@ -19,7 +19,7 @@ class FakeRecorder:
     def __init__(self, clock):
         self.clock = clock
 
-    def start(self, audio_dir, record_mic=True):
+    def start(self, audio_dir, record_mic=True, mic_name="", output_name=""):
         Path(audio_dir).mkdir(parents=True, exist_ok=True)
         return [{"name": "discord", "chunk_seconds": 600}]
 

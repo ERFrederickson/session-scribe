@@ -40,13 +40,60 @@ def _pyaudio():
     return pyaudio
 
 
-def find_devices(pa) -> dict:
-    """Return {'loopback': info, 'mic': info} for the default Windows devices."""
+def _wasapi_devices(pa) -> list[dict]:
     pyaudio = _pyaudio()
     wasapi = pa.get_host_api_info_by_type(pyaudio.paWASAPI)
-    loopback = pa.get_default_wasapi_loopback()
-    mic_index = wasapi.get("defaultInputDevice", -1)
-    mic = pa.get_device_info_by_index(mic_index) if mic_index is not None and mic_index >= 0 else None
+    out = []
+    for i in range(pa.get_device_count()):
+        info = pa.get_device_info_by_index(i)
+        if info.get("hostApi") == wasapi["index"] and info.get("maxInputChannels", 0) > 0:
+            out.append(info)
+    return out
+
+
+def list_devices() -> dict:
+    """Names of the microphones and the outputs we can record from."""
+    pyaudio = _pyaudio()
+    pa = pyaudio.PyAudio()
+    try:
+        devices = _wasapi_devices(pa)
+        return {
+            "mics": [d["name"] for d in devices if not d.get("isLoopbackDevice")],
+            "outputs": [d["name"] for d in devices if d.get("isLoopbackDevice")],
+        }
+    finally:
+        pa.terminate()
+
+
+def find_devices(pa, mic_name: str = "", output_name: str = "") -> dict:
+    """Return {'loopback': info, 'mic': info}.
+
+    Uses the devices chosen in Settings when they are plugged in, otherwise the
+    Windows defaults. Names are matched exactly first, then loosely, because
+    Windows sometimes adds a number like "2- " when a headset is re-plugged.
+    """
+    pyaudio = _pyaudio()
+    wasapi = pa.get_host_api_info_by_type(pyaudio.paWASAPI)
+    devices = _wasapi_devices(pa)
+
+    def pick(name: str, loopback: bool):
+        if not name:
+            return None
+        pool = [d for d in devices if bool(d.get("isLoopbackDevice")) == loopback]
+        for d in pool:
+            if d["name"] == name:
+                return d
+        for d in pool:
+            if name.lower() in d["name"].lower() or d["name"].lower() in name.lower():
+                return d
+        log.warning("Audio device %r not found, using the Windows default", name)
+        return None
+
+    loopback = pick(output_name, True) or pa.get_default_wasapi_loopback()
+    mic = pick(mic_name, False)
+    if mic is None:
+        mic_index = wasapi.get("defaultInputDevice", -1)
+        mic = pa.get_device_info_by_index(mic_index) if mic_index is not None and mic_index >= 0 else None
     return {"loopback": loopback, "mic": mic}
 
 
@@ -137,10 +184,11 @@ class Recorder:
         self.tracks: list[Track] = []
         self._pa = None
 
-    def start(self, audio_dir: Path, record_mic: bool = True) -> list[dict]:
+    def start(self, audio_dir: Path, record_mic: bool = True, mic_name: str = "",
+              output_name: str = "") -> list[dict]:
         pyaudio = _pyaudio()
         self._pa = pyaudio.PyAudio()
-        devices = find_devices(self._pa)
+        devices = find_devices(self._pa, mic_name, output_name)
         self.tracks = [Track("discord", devices["loopback"], self.clock, audio_dir)]
         if record_mic and devices["mic"] is not None:
             self.tracks.append(Track("mic", devices["mic"], self.clock, audio_dir))

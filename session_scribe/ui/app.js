@@ -198,6 +198,22 @@ function loadSettings(values) {
   settingsLoaded = true;
 }
 
+async function fillDeviceLists(settings) {
+  const devices = await api.audio_devices();
+  const fillSelect = (name, names, current, defaultLabel) => {
+    const select = $("settings-form").elements[name];
+    const options = [el("option", { value: "" }, defaultLabel)];
+    for (const n of names) options.push(el("option", { value: n }, n));
+    // Keep a saved device visible even if it's unplugged right now.
+    if (current && !names.includes(current)) {
+      options.push(el("option", { value: current }, `${current} (not connected)`));
+    }
+    select.replaceChildren(...options);
+  };
+  fillSelect("mic_device", devices.mics, settings.mic_device, "Windows default microphone");
+  fillSelect("output_device", devices.outputs.map((n) => n), settings.output_device, "Windows default output");
+}
+
 function readSettings() {
   const form = $("settings-form");
   const out = {};
@@ -216,7 +232,11 @@ function wire() {
     else await api.connect();
     refresh();
   });
-  $("btn-settings").addEventListener("click", () => { loadSettings(last.settings); $("settings").showModal(); });
+  $("btn-settings").addEventListener("click", async () => {
+    await fillDeviceLists(last.settings);
+    loadSettings(last.settings);
+    $("settings").showModal();
+  });
   $("settings").addEventListener("close", async () => {
     if ($("settings").returnValue === "save") {
       await api.save_settings(readSettings());

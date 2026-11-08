@@ -31,6 +31,9 @@ class Settings:
     # Names and terms Whisper should spell correctly (places, NPCs, factions...)
     glossary: str = ""
     record_mic: bool = True
+    # "" means the Windows default device
+    mic_device: str = ""
+    output_device: str = ""
     last_campaign: str = "My Campaign"
     # campaign name -> discord user id -> {"character": str, "ignored": bool}
     campaigns: dict = field(default_factory=dict)

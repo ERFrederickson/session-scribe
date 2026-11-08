@@ -81,6 +81,8 @@ Audio is saved in 10-minute pieces, and each piece is closed as soon as it's ful
 
 | Setting | Notes |
 | --- | --- |
+| Microphone | Which mic to record your voice from. "Windows default" follows whatever Windows is set to. |
+| Record Discord from | The headset or speakers you hear Discord through. |
 | Speech model | `medium.en` is a good balance. `small.en` is much faster. `large-v3` is the most accurate and slowest. The model downloads on first use. |
 | Run transcription on | "Automatic" uses an NVIDIA graphics card if its libraries are installed (see below) and otherwise falls back to the CPU on its own. |
 | Spelling help | Comma-separated names and terms (NPCs, places, factions). Player and character names are added automatically. |
@@ -109,7 +111,7 @@ The "discord" track is a single mix of everyone you hear. While recording, the a
 
 - **"Could not find the Discord desktop app"**: Discord must be running. The browser version doesn't expose the local connection.
 - **Authorization fails or mentions scopes**: make sure the developer app was created by the account you're logged into, and that `http://localhost` is listed under OAuth2 Redirects exactly as in Settings. Click **Log out of Discord** in Settings and connect again.
-- **Discord track is silent**: the app records your *default* Windows output device. Make sure Discord plays through that device (Discord, User Settings, Voice & Video, Output Device: Default).
+- **Discord track is silent**: in Settings, set "Record Discord from" to the headset or speakers Discord plays through (Discord, User Settings, Voice & Video, Output Device).
 - **Transcription is very slow**: switch to `small.en`, or set up your graphics card (below). It still runs in the background and resumes if interrupted.
 - **"cublas64_12.dll is not found"**: the app found an NVIDIA card but not its libraries, and switches to the CPU on its own. To use the card instead, see below.
 
