@@ -413,6 +413,33 @@ class Controller:
     def sessions(self) -> list[dict]:
         return list_sessions(self.config.sessions_dir)
 
+    def delete_session(self, session_dir: str) -> str | None:
+        """Move a whole session folder (audio + transcript) to the Recycle Bin.
+
+        Returns an error message for the UI, or None on success.
+        """
+        path = Path(session_dir).resolve()
+        root = self.config.sessions_dir.resolve()
+        if path.parent != root or not (path / "session.json").exists():
+            return "That isn't a Session Scribe session folder, so it wasn't deleted."
+        with self.lock:
+            if self.session and self.session.dir.resolve() == path:
+                return "This session is still recording. End it first."
+            job = self.jobs.get(session_dir)
+            if job and job.get("status") == "running":
+                return "This session is being transcribed. Cancel the transcription first."
+            if session_dir in self._job_queue:
+                self._job_queue.remove(session_dir)
+        try:
+            from send2trash import send2trash
+            send2trash(str(path))
+        except Exception as e:
+            log.exception("Could not delete %s", path)
+            return f"Couldn't move the session to the Recycle Bin: {e}"
+        with self.lock:
+            self.jobs.pop(session_dir, None)
+        return None
+
     def save_settings(self, values: dict) -> None:
         with self.lock:
             s = self.config.settings

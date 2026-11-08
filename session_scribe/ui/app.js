@@ -156,12 +156,26 @@ function sessionRow(s) {
       s.has_transcript ? "Re-transcribe" : "Transcribe"));
   }
   actions.append(el("button", { class: "ghost", onclick: () => api.open_path(s.dir) }, "Folder"));
+  if (s.status !== "recording") {
+    actions.append(el("button", { class: "danger", onclick: () => deleteSession(s, title) }, "Delete"));
+  }
   const div = el("div", { class: "session", "data-dir": s.dir },
     el("div", {}, el("strong", {}, title)),
     actions,
     el("div", { class: "meta" }, `${(s.started_at || "").replace("T", " ")} · ${fmtDuration(s.duration)} · ${status}`),
     el("div", { class: "progress", hidden: true }));
   return div;
+}
+
+async function deleteSession(s, title) {
+  const when = (s.started_at || "").replace("T", " ");
+  const ok = confirm(`Delete "${title}" (${when})?\n\n` +
+    "The recordings and transcript go to the Recycle Bin. " +
+    "Empty the Recycle Bin to free up the space.");
+  if (!ok) return;
+  const error = await api.delete_session(s.dir);
+  if (error) alert(error);
+  loadSessions();
 }
 
 function renderJobs(s) {

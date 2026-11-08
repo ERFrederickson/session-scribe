@@ -65,6 +65,9 @@ class Api:
     def cancel_transcription(self, session_dir):
         self._c.cancel_transcription(session_dir)
 
+    def delete_session(self, session_dir):
+        return self._c.delete_session(session_dir)
+
     def relabel(self, session_dir):
         return self._c.relabel(session_dir)
 

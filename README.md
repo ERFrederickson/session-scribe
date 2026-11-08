@@ -60,6 +60,8 @@ When it's done, **Open transcript** opens `transcript.md`:
 *[01:30:00] Break (15m)*
 ```
 
+Once you've turned a session into notes, click **Delete** to remove its recordings and transcript. The folder goes to the Recycle Bin, so empty it to free the disk space.
+
 If you fix a tag afterwards, edit `session.json` in the session folder and click **Relabel**. That reruns only the labelling, not the slow transcription.
 
 ## Session folder
