@@ -78,6 +78,13 @@
           <option value="large-v3">large-v3 (slowest, best)</option>
         </select>
       </label>
+      <label>Run transcription on
+        <select name="whisper_device">
+          <option value="auto">Automatic (graphics card if set up, otherwise CPU)</option>
+          <option value="cpu">CPU only</option>
+          <option value="cuda">NVIDIA graphics card</option>
+        </select>
+      </label>
       <label>Spelling help: names and terms, comma separated
         <textarea name="glossary" rows="3" placeholder="Mythropolis, Gaia's Well, ..."></textarea>
       </label>

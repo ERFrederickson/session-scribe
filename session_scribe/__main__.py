@@ -121,7 +121,8 @@ def cmd_transcribe(args) -> int:
     def progress(frac, msg):
         print(f"\r[{frac * 100:5.1f}%] {msg:<60}", end="", flush=True)
 
-    path = transcribe.run(Path(args.dir), args.model or s.whisper_model, s.language, s.glossary, progress)
+    path = transcribe.run(Path(args.dir), args.model or s.whisper_model, s.language, s.glossary, progress,
+                         device=s.whisper_device)
     print(f"\nWrote {path}")
     return 0
 

@@ -1,0 +1,4 @@
+# Optional: lets transcription use an NVIDIA graphics card (much faster).
+# Install with:  .venv\Scripts\python -m pip install -r requirements-gpu.txt
+nvidia-cublas-cu12
+nvidia-cudnn-cu12==9.*

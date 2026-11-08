@@ -25,6 +25,8 @@ class Settings:
     redirect_uri: str = "http://localhost"
     data_dir: str = str(default_data_dir())
     whisper_model: str = "medium.en"
+    # "auto" uses an NVIDIA card when its libraries are installed, else the CPU
+    whisper_device: str = "auto"
     language: str = "en"
     # Names and terms Whisper should spell correctly (places, NPCs, factions...)
     glossary: str = ""

@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import re
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Callable
@@ -97,12 +98,46 @@ def load_wav_16k(path: Path):
 
 # ------------------------------------------------------------- whisper step --
 
-def transcribe_audio(session: Session, model_name: str = "medium.en", language: str = "en",
-                     glossary: str = "", progress: ProgressFn | None = None,
-                     cancel: Callable[[], bool] | None = None) -> None:
+class _Cancelled(Exception):
+    pass
+
+
+def _register_cuda_dlls() -> None:
+    """Let Windows find NVIDIA's CUDA libraries if they were pip-installed
+    (see requirements-gpu.txt). Harmless when they aren't."""
+    if sys.platform != "win32":
+        return
+    try:
+        import nvidia  # type: ignore  # namespace package from nvidia-* wheels
+    except ImportError:
+        return
+    for base in getattr(nvidia, "__path__", []):
+        for bin_dir in Path(base).glob("*/bin"):
+            try:
+                os.add_dll_directory(str(bin_dir))  # type: ignore[attr-defined]
+            except OSError:
+                continue
+            os.environ["PATH"] = str(bin_dir) + os.pathsep + os.environ.get("PATH", "")
+
+
+def _is_gpu_error(e: Exception) -> bool:
+    text = str(e).lower()
+    return any(k in text for k in ("cublas", "cudnn", "cuda", "cudart", "gpu"))
+
+
+def _load_model(model_name: str, device: str):
     from faster_whisper import WhisperModel  # heavy import, only when needed
 
+    if device == "cpu":
+        return WhisperModel(model_name, device="cpu", compute_type="int8")
+    return WhisperModel(model_name, device=device, compute_type="auto")
+
+
+def transcribe_audio(session: Session, model_name: str = "medium.en", language: str = "en",
+                     glossary: str = "", progress: ProgressFn | None = None,
+                     cancel: Callable[[], bool] | None = None, device: str = "auto") -> None:
     progress = progress or (lambda f, m: None)
+    cancel = cancel or (lambda: False)
     cache = session.dir / "transcribe_cache"
     cache.mkdir(exist_ok=True)
 
@@ -115,35 +150,51 @@ def transcribe_audio(session: Session, model_name: str = "medium.en", language: 
         progress(1.0, "Audio already transcribed")
         return
 
+    device = device if device in ("auto", "cpu", "cuda") else "auto"
+    if device != "cpu":
+        _register_cuda_dlls()
     progress(0.0, f"Loading speech model ({model_name}). The first run downloads it.")
-    model = WhisperModel(model_name, device="auto", compute_type="auto")
+    try:
+        model = _load_model(model_name, device)
+    except Exception as e:
+        if device == "cpu" or not _is_gpu_error(e):
+            raise
+        log.warning("GPU model load failed, using CPU: %s", e)
+        device = "cpu"
+        model = _load_model(model_name, device)
     prompt = build_prompt(session, glossary) or None
 
     total = sum(max(1, c.stat().st_size) for _, c in jobs)
     done = 0
     for i, (track, chunk) in enumerate(jobs, 1):
-        if cancel and cancel():
+        if cancel():
             progress(done / total, "Cancelled")
             return
         label = f"{track} part {i}/{len(jobs)}"
-        progress(done / total, f"Transcribing {label}")
-        segments, info = model.transcribe(
-            load_wav_16k(chunk),
-            language=language or None,
-            word_timestamps=True,
-            vad_filter=True,
-            condition_on_previous_text=False,
-            initial_prompt=prompt,
-        )
-        words = []
         size = max(1, chunk.stat().st_size)
-        for seg in segments:
-            for w in seg.words or []:
-                words.append({"start": round(w.start, 3), "end": round(w.end, 3), "text": w.word})
-            if info.duration:
-                frac = min(1.0, seg.end / info.duration)
-                progress((done + frac * size) / total, f"Transcribing {label}")
-            if cancel and cancel():
+        audio = load_wav_16k(chunk)
+
+        def report(frac: float, label=label, size=size) -> None:
+            where = "" if device == "cpu" else " (GPU)"
+            progress((done + frac * size) / total, f"Transcribing {label}{where}")
+
+        try:
+            words = _transcribe_chunk(model, audio, language, prompt, report, cancel)
+        except _Cancelled:
+            progress(done / total, "Cancelled")
+            return
+        except Exception as e:
+            # GPU problems (e.g. missing cublas64_12.dll) only show up here,
+            # when the model first runs. Switch to the CPU and redo this chunk.
+            if device == "cpu" or not _is_gpu_error(e):
+                raise
+            log.warning("GPU transcription failed, switching to CPU: %s", e)
+            progress(done / total, "Graphics card libraries missing, switching to CPU")
+            device = "cpu"
+            model = _load_model(model_name, device)
+            try:
+                words = _transcribe_chunk(model, audio, language, prompt, report, cancel)
+            except _Cancelled:
                 progress(done / total, "Cancelled")
                 return
         tmp = cache / (chunk.stem + ".tmp")
@@ -151,6 +202,27 @@ def transcribe_audio(session: Session, model_name: str = "medium.en", language: 
         os.replace(tmp, cache / (chunk.stem + ".json"))
         done += size
     progress(1.0, "Audio transcribed")
+
+
+def _transcribe_chunk(model, audio, language, prompt, report, cancel) -> list[dict]:
+    segments, info = model.transcribe(
+        audio,
+        language=language or None,
+        word_timestamps=True,
+        vad_filter=True,
+        condition_on_previous_text=False,
+        initial_prompt=prompt,
+    )
+    words = []
+    report(0.0)
+    for seg in segments:
+        for w in seg.words or []:
+            words.append({"start": round(w.start, 3), "end": round(w.end, 3), "text": w.word})
+        if info.duration:
+            report(min(1.0, seg.end / info.duration))
+        if cancel():
+            raise _Cancelled()
+    return words
 
 
 # ------------------------------------------------------------- labelling ----
@@ -261,9 +333,10 @@ def write_transcript(session: Session) -> Path:
 
 
 def run(session_dir: Path, model_name: str, language: str, glossary: str,
-        progress: ProgressFn | None = None, cancel: Callable[[], bool] | None = None) -> Path | None:
+        progress: ProgressFn | None = None, cancel: Callable[[], bool] | None = None,
+        device: str = "auto") -> Path | None:
     session = Session(session_dir)
-    transcribe_audio(session, model_name, language, glossary, progress, cancel)
+    transcribe_audio(session, model_name, language, glossary, progress, cancel, device)
     if cancel and cancel():
         return None
     path = write_transcript(session)

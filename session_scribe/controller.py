@@ -389,7 +389,8 @@ class Controller:
             s = self.config.settings
             try:
                 path = transcribe.run(Path(d), s.whisper_model, s.language, s.glossary,
-                                      progress, cancel=lambda d=d: d in self._job_cancel)
+                                      progress, cancel=lambda d=d: d in self._job_cancel,
+                                      device=s.whisper_device)
                 job["status"] = "done" if path else "cancelled"
             except Exception as e:
                 log.exception("Transcription failed for %s", d)
