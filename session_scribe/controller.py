@@ -43,7 +43,8 @@ class Controller:
         self.rec_error: str | None = None
         self.campaign = config.settings.last_campaign
         self.title = ""
-        self.auto_transcribe = True
+        # Ending a session always starts transcription (tests switch it off).
+        self.transcribe_on_end = True
 
         # Transcription
         self.jobs: dict[str, dict] = {}
@@ -83,7 +84,6 @@ class Controller:
                 "campaign": self.campaign,
                 "campaigns": sorted(set(self.config.settings.campaigns) | {self.campaign}),
                 "title": self.title,
-                "auto_transcribe": self.auto_transcribe,
                 "recording": {
                     "state": self.rec_state,
                     "elapsed": self.clock.elapsed() if self.rec_state != "idle" else 0,
@@ -335,7 +335,7 @@ class Controller:
             session.close()
             self.session = None
             self.recorder = None
-        if self.auto_transcribe:
+        if self.transcribe_on_end:
             self.queue_transcription(str(session.dir))
 
     def _recover_interrupted(self) -> None:

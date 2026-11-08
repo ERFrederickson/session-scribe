@@ -100,7 +100,7 @@ class IntegrationTest(unittest.TestCase):
             cfg.token_path.write_text(json.dumps({"access_token": "t", "expires_at": time.time() + 999}))
             ctl_mod.Recorder = FakeRecorder
             c = ctl_mod.Controller(cfg)
-            c.auto_transcribe = False
+            c.transcribe_on_end = False
             c.connect()
             self.assertTrue(wait_for(lambda: c.rpc_status == "connected"), c.rpc_status)
             st = c.state()

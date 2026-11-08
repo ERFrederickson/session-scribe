@@ -88,7 +88,6 @@ function renderRecorder(s) {
   if (document.activeElement !== $("campaign")) $("campaign").value = s.campaign;
   const list = $("campaign-list");
   list.replaceChildren(...s.campaigns.map((c) => el("option", { value: c })));
-  $("auto-transcribe").checked = s.auto_transcribe;
 }
 
 const rows = new Map();
@@ -251,7 +250,6 @@ function wire() {
     for (const row of rows.values()) row.input.blur();
     refresh();
   });
-  $("auto-transcribe").addEventListener("change", (e) => api.set_auto_transcribe(e.target.checked));
 
   $("btn-record").addEventListener("click", async () => {
     if (last && last.discord.status !== "connected" &&
@@ -262,9 +260,9 @@ function wire() {
   $("btn-pause").addEventListener("click", async () => { await api.pause(); refresh(); });
   $("btn-resume").addEventListener("click", async () => { await api.resume(); refresh(); });
   $("btn-stop").addEventListener("click", async () => {
-    if (!confirm("Stop recording and end this session?")) return;
+    if (!confirm("End this session? Recording stops and transcription starts.")) return;
     $("btn-stop").disabled = true;
-    await api.stop();
+    await api.end_session();
     $("btn-stop").disabled = false;
     $("title").value = "";
     refresh(); loadSessions();

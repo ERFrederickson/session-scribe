@@ -43,9 +43,6 @@ class Api:
     def set_ignored(self, user_id, ignored):
         self._c.set_tag(user_id, ignored=bool(ignored))
 
-    def set_auto_transcribe(self, value):
-        self._c.auto_transcribe = bool(value)
-
     def start(self, title=""):
         self._c.start(title)
 
@@ -55,7 +52,8 @@ class Api:
     def resume(self):
         self._c.resume()
 
-    def stop(self):
+    def end_session(self):
+        """Halt recording, close the session and start transcribing it."""
         self._c.stop()
 
     def sessions(self):

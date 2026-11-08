@@ -50,7 +50,7 @@ If all of that works, you're set.
 1. Pick or type the **campaign**. Each campaign keeps its own character tags.
 2. Set each person's **character** in the table (for yourself, type "GM"). Tick **Ignore** for anyone who shouldn't be transcribed.
 3. Click **Record**. Use **Pause** during breaks and **Resume** when you start again.
-4. Click **Stop** at the end. If "Transcribe when I stop" is ticked, transcription starts in the background. The progress bar is under **Sessions**.
+4. Click **End Session** when you're done. Recording stops and transcription starts right away in the background. The progress bar is under **Sessions**. Pausing never ends the session or starts transcription.
 
 When it's done, **Open transcript** opens `transcript.md`:
 
