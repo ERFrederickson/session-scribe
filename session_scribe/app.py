@@ -28,6 +28,9 @@ class Api:
     def connect(self):
         self._c.connect()
 
+    def refresh_voice(self):
+        return self._c.refresh_voice()
+
     def disconnect(self):
         self._c.disconnect()
 

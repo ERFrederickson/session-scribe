@@ -404,6 +404,16 @@ function wire() {
     await api.start($("title").value);
     refresh(); loadSessions();
   });
+  $("btn-refresh-voice").addEventListener("click", async () => {
+    const btn = $("btn-refresh-voice");
+    btn.disabled = true;
+    btn.textContent = "Refreshing...";
+    const error = await api.refresh_voice();
+    btn.disabled = false;
+    btn.textContent = "Refresh";
+    if (error) alert(error);
+    refresh();
+  });
   $("btn-pause").addEventListener("click", async () => { await api.pause(); refresh(); });
   $("btn-resume").addEventListener("click", async () => { await api.resume(); refresh(); });
   $("btn-stop").addEventListener("click", async () => {

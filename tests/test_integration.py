@@ -37,6 +37,11 @@ class FakeDiscord:
     def __init__(self, path):
         self.path = path
         self.writer = None
+        self.voice_states = [
+            {"nick": None, "user": {"id": "gm", "username": "erin"}},
+            {"nick": "Kira", "user": {"id": "ash", "username": "kira1"}},
+            {"nick": None, "user": {"id": "bot", "username": "Jukebox", "bot": True}},
+        ]
         self.loop = asyncio.new_event_loop()
         self.ready = threading.Event()
         threading.Thread(target=self._run, daemon=True).start()
@@ -71,11 +76,7 @@ class FakeDiscord:
             if cmd == "AUTHENTICATE":
                 data = {"user": {"id": "gm", "username": "erin"}}
             elif cmd == "GET_SELECTED_VOICE_CHANNEL":
-                data = {"id": "c1", "name": "Tavern", "voice_states": [
-                    {"nick": None, "user": {"id": "gm", "username": "erin"}},
-                    {"nick": "Kira", "user": {"id": "ash", "username": "kira1"}},
-                    {"nick": None, "user": {"id": "bot", "username": "Jukebox", "bot": True}},
-                ]}
+                data = {"id": "c1", "name": "Tavern", "voice_states": list(self.voice_states)}
             self._send(1, {"cmd": cmd, "nonce": nonce, "evt": msg.get("evt"), "data": data})
 
 
@@ -120,6 +121,12 @@ class IntegrationTest(unittest.TestCase):
             fake.push("VOICE_CHANNEL_SELECT", {"channel_id": "c1"})
             time.sleep(0.3)
             self.assertEqual(c.rpc_status, "connected")
+            # Someone joins without Discord sending an event; Refresh finds them.
+            fake.voice_states.append({"nick": None, "user": {"id": "late", "username": "dex"}})
+            self.assertNotIn("late", c.voice)
+            self.assertIsNone(c.refresh_voice())
+            self.assertIn("late", c.voice)
+            self.assertEqual(c.rpc_status, "connected")
             session_dir = c.session.dir
             c.stop()
 
@@ -131,6 +138,7 @@ class IntegrationTest(unittest.TestCase):
             self.assertEqual(types[:3], ["start", "speaking_start", "pause"])
             self.assertNotIn("speaking_stop", types[:4])  # stop happened while paused
             self.assertEqual(types[-1], "stop")
+            self.assertIn("join", types)
             c.disconnect()
 
 

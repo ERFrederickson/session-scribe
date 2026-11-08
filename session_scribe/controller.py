@@ -153,7 +153,16 @@ class Controller:
                 await self._refresh_channel()
                 self._set_status("connected")
                 delay = 3
-                await rpc.closed.wait()
+                # Re-check the channel now and then in case a join/leave
+                # event was missed (the Refresh button does the same).
+                while not rpc.closed.is_set():
+                    try:
+                        await asyncio.wait_for(rpc.closed.wait(), timeout=30)
+                    except asyncio.TimeoutError:
+                        try:
+                            await self._refresh_channel()
+                        except (RPCError, asyncio.TimeoutError) as e:
+                            log.info("Periodic channel refresh failed: %s", e)
                 if self.rpc_wanted:
                     self._set_status("lost connection to Discord, retrying")
             except (RPCError, OSError, asyncio.TimeoutError) as e:
@@ -176,20 +185,51 @@ class Controller:
         ch = await self.rpc.get_selected_voice_channel()
         if old and (not ch or ch.get("id") != old):
             await self.rpc.unwatch_channel(old)
+        same_channel = bool(ch and old == ch.get("id"))
         with self.lock:
-            self.voice.clear()
-            self.speaking.clear()
+            before = set(self.voice)
+            if not same_channel:
+                self.voice.clear()
+                self.speaking.clear()
             if not ch:
                 self.channel = None
                 return
             self.channel = {"id": ch.get("id"), "name": ch.get("name"), "guild_id": ch.get("guild_id")}
+            present = set()
             for vs in ch.get("voice_states", []):
                 self._upsert_voice(vs)
+                present.add((vs.get("user") or {}).get("id"))
+            # Catch joins/leaves Discord didn't tell us about.
+            rec = self.session if self.rec_state == "recording" and same_channel else None
+            t = self.clock.elapsed()
+            for uid in set(self.voice) - present:
+                self.voice.pop(uid, None)
+                if uid in self.speaking:
+                    self.speaking.discard(uid)
+                    if rec:
+                        rec.log(t, "speaking_stop", user_id=uid)
+                if rec:
+                    rec.log(t, "leave", user_id=uid)
+            if rec:
+                for uid in present - before:
+                    if uid:
+                        rec.log(t, "join", user_id=uid)
             if self.session:
                 self.session.meta["channel"] = self.channel
                 self.session.save()
         if not old or old != ch.get("id"):
             await self.rpc.watch_channel(ch["id"])
+
+    def refresh_voice(self) -> str | None:
+        """Ask Discord again who is in the voice channel (the Refresh button)."""
+        if self.rpc is None or self.rpc_status != "connected":
+            return "Connect to Discord first."
+        fut = asyncio.run_coroutine_threadsafe(self._refresh_channel(), self.loop)
+        try:
+            fut.result(timeout=10)
+        except Exception as e:
+            return f"Couldn't refresh: {e}"
+        return None
 
     def _upsert_voice(self, vs: dict) -> None:
         user = vs.get("user") or {}

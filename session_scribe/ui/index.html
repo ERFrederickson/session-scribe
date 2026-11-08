@@ -51,7 +51,10 @@
     </section>
 
     <section class="card">
-      <h2>In the voice channel <span id="channel-name" class="muted"></span></h2>
+      <div class="row between">
+        <h2>In the voice channel <span id="channel-name" class="muted"></span></h2>
+        <button id="btn-refresh-voice" class="ghost small-btn" title="Ask Discord again who is in the channel">Refresh</button>
+      </div>
       <p class="muted small">Characters come from the selected campaign. Changes here are saved to it.
         Ignored users (bots are ignored by default) are left out of the transcript.</p>
       <table id="people">

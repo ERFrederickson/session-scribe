@@ -122,3 +122,6 @@ th { white-space: nowrap; }
 
 h1 { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
 .logo { width: 26px; height: 26px; }
+
+.row.between { justify-content: space-between; align-items: center; }
+.small-btn { padding: 4px 10px; font-size: 12px; }
