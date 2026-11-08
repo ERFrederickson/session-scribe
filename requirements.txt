@@ -1,0 +1,5 @@
+# Windows only. Python 3.11 or 3.12 recommended.
+numpy>=1.26
+PyAudioWPatch>=0.2.12
+pywebview>=5.0
+faster-whisper>=1.1

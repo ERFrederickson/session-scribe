@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+# Never commit recordings or credentials
+sessions/
+*.wav
+discord_token.json
+config.json

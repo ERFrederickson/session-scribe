@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Session Scribe</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Session Scribe</h1>
+    <div class="discord">
+      <span id="discord-dot" class="dot"></span>
+      <span id="discord-status">not connected</span>
+      <button id="btn-connect">Connect to Discord</button>
+      <button id="btn-settings" class="ghost" title="Settings">Settings</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="card">
+      <div class="row">
+        <label>Campaign
+          <input id="campaign" list="campaign-list" autocomplete="off">
+          <datalist id="campaign-list"></datalist>
+        </label>
+        <label class="grow">Session title (optional)
+          <input id="title" placeholder="e.g. Session 12: The Well Runs Dry" autocomplete="off">
+        </label>
+      </div>
+
+      <div class="recorder">
+        <div class="timer" id="timer">00:00:00</div>
+        <div class="state" id="rec-state">Not recording</div>
+        <div class="buttons">
+          <button id="btn-record" class="record">Record</button>
+          <button id="btn-pause" class="secondary" hidden>Pause</button>
+          <button id="btn-resume" class="record" hidden>Resume</button>
+          <button id="btn-stop" class="danger" hidden>Stop</button>
+        </div>
+        <div class="meters">
+          <div class="meter"><span>Discord</span><div><i id="lvl-discord"></i></div></div>
+          <div class="meter"><span>Mic</span><div><i id="lvl-mic"></i></div></div>
+        </div>
+        <label class="check"><input type="checkbox" id="auto-transcribe" checked> Transcribe when I stop</label>
+        <div class="error" id="rec-error" hidden></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>In the voice channel <span id="channel-name" class="muted"></span></h2>
+      <p class="muted small">Tags are saved per campaign. Ignored users (bots are ignored by default) are left out of the transcript.</p>
+      <table id="people">
+        <thead><tr><th></th><th>Discord user</th><th>Character</th><th>Ignore</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <p id="people-empty" class="muted">Connect to Discord and join a voice channel to see who is here.</p>
+    </section>
+
+    <section class="card">
+      <h2>Sessions</h2>
+      <div id="sessions"></div>
+    </section>
+  </main>
+
+  <dialog id="settings">
+    <form method="dialog" id="settings-form">
+      <h2>Settings</h2>
+      <p class="muted small">Create an app at discord.com/developers/applications, add
+        <code>http://localhost</code> as an OAuth2 redirect, then paste its Client ID and Client Secret here.</p>
+      <label>Discord Client ID <input name="discord_client_id" autocomplete="off"></label>
+      <label>Discord Client Secret <input name="discord_client_secret" type="password" autocomplete="off"></label>
+      <label>OAuth2 redirect URI <input name="redirect_uri"></label>
+      <label>Session folder <input name="data_dir"></label>
+      <label>Speech model
+        <select name="whisper_model">
+          <option value="small.en">small.en (faster, less accurate)</option>
+          <option value="medium.en">medium.en (recommended)</option>
+          <option value="large-v3">large-v3 (slowest, best)</option>
+        </select>
+      </label>
+      <label>Spelling help: names and terms, comma separated
+        <textarea name="glossary" rows="3" placeholder="Mythropolis, Gaia's Well, ..."></textarea>
+      </label>
+      <label class="check"><input type="checkbox" name="record_mic"> Record my microphone</label>
+      <div class="buttons">
+        <button type="button" id="btn-forget" class="ghost">Log out of Discord</button>
+        <span class="grow"></span>
+        <button value="cancel" class="secondary">Cancel</button>
+        <button value="save" id="btn-save-settings">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>

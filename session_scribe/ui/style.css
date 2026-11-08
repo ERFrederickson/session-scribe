@@ -1,0 +1,84 @@
+:root {
+  --bg: #1e1f24;
+  --card: #2a2c33;
+  --line: #3a3d46;
+  --text: #e8e8ec;
+  --muted: #9a9caa;
+  --accent: #7c8cff;
+  --rec: #e5484d;
+  --ok: #3fb950;
+  --warn: #d29922;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-size: 14px; }
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 20px; border-bottom: 1px solid var(--line);
+}
+h1 { font-size: 18px; margin: 0; font-weight: 600; }
+h2 { font-size: 15px; margin: 0 0 8px; font-weight: 600; }
+main { padding: 16px 20px; display: grid; gap: 16px; max-width: 980px; margin: 0 auto; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+.row { display: flex; gap: 12px; }
+.grow { flex: 1; }
+label { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 12px; }
+label.check { flex-direction: row; align-items: center; gap: 6px; font-size: 13px; }
+input, select, textarea {
+  background: var(--bg); color: var(--text); border: 1px solid var(--line);
+  border-radius: 6px; padding: 7px 9px; font: inherit;
+}
+input:focus, select:focus, textarea:focus { outline: 1px solid var(--accent); }
+button {
+  background: var(--accent); color: #fff; border: 0; border-radius: 6px;
+  padding: 7px 14px; font: inherit; cursor: pointer;
+}
+button:disabled { opacity: .45; cursor: default; }
+button.secondary { background: var(--line); }
+button.ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+button.danger { background: #8b2c2f; }
+button.record { background: var(--rec); }
+.muted { color: var(--muted); font-weight: normal; }
+.small { font-size: 12px; margin: 0 0 10px; }
+.discord { display: flex; align-items: center; gap: 10px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--line); display: inline-block; }
+.dot.ok { background: var(--ok); }
+.dot.warn { background: var(--warn); }
+.dot.bad { background: var(--rec); }
+
+.recorder { margin-top: 16px; display: grid; justify-items: center; gap: 10px; }
+.timer { font-size: 44px; font-variant-numeric: tabular-nums; letter-spacing: 1px; }
+.state { color: var(--muted); }
+.state.recording { color: var(--rec); }
+.state.paused { color: var(--warn); }
+.buttons { display: flex; gap: 8px; align-items: center; }
+.recorder .buttons button { min-width: 110px; padding: 10px 16px; font-size: 15px; }
+.meters { display: flex; gap: 16px; }
+.meter { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+.meter div { width: 140px; height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+.meter i { display: block; height: 100%; width: 0; background: var(--ok); transition: width .15s; }
+.error { color: #ff8b8b; }
+
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; color: var(--muted); font-weight: normal; font-size: 12px; padding: 4px 6px; }
+td { padding: 5px 6px; border-top: 1px solid var(--line); }
+td:first-child { width: 18px; }
+td input[type=text] { width: 100%; }
+tr.ignored td { opacity: .5; }
+tr.speaking .dot { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+.tag { font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; margin-left: 6px; }
+
+.session { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.session:first-child { border-top: 0; }
+.session .meta { color: var(--muted); font-size: 12px; }
+.session .actions { display: flex; gap: 6px; grid-row: span 2; align-items: center; }
+.session .actions button { padding: 5px 10px; font-size: 12px; }
+.progress { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.progress div { flex: 0 0 200px; height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+.progress i { display: block; height: 100%; background: var(--accent); }
+
+dialog { background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 10px; width: 520px; }
+dialog::backdrop { background: rgba(0,0,0,.55); }
+dialog form { display: grid; gap: 10px; }
+code { background: var(--bg); padding: 1px 4px; border-radius: 4px; }
