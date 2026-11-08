@@ -77,6 +77,7 @@ function renderRecorder(s) {
   $("btn-resume").hidden = r.state !== "paused";
   $("btn-stop").hidden = r.state === "idle";
   $("campaign").disabled = r.state !== "idle";
+  $("campaign").title = r.state !== "idle" ? "End the session to switch campaigns" : "";
   $("title").disabled = r.state !== "idle";
   for (const name of ["discord", "mic"]) {
     $("lvl-" + name).style.width = `${Math.round((r.levels[name] || 0) * 100)}%`;
@@ -85,9 +86,13 @@ function renderRecorder(s) {
   err.hidden = !r.error;
   err.textContent = r.error || "";
 
-  if (document.activeElement !== $("campaign")) $("campaign").value = s.campaign;
-  const list = $("campaign-list");
-  list.replaceChildren(...s.campaigns.map((c) => el("option", { value: c })));
+  const select = $("campaign");
+  const key = s.campaigns.join("\n");
+  if (select.dataset.key !== key) {
+    select.replaceChildren(...s.campaigns.map((c) => el("option", { value: c }, c)));
+    select.dataset.key = key;
+  }
+  if (document.activeElement !== select) select.value = s.campaign;
 }
 
 const rows = new Map();
@@ -237,9 +242,135 @@ function readSettings() {
   return out;
 }
 
+// ---------------------------------------------------------------- tabs ----
+
+function setupTabs(nav, scope, onChange) {
+  nav.addEventListener("click", (e) => {
+    const btn = e.target.closest(".tab");
+    if (!btn) return;
+    showTab(nav, scope, btn.dataset.tab);
+    if (onChange) onChange(btn.dataset.tab);
+  });
+}
+
+function showTab(nav, scope, name) {
+  for (const b of nav.querySelectorAll(".tab")) b.classList.toggle("active", b.dataset.tab === name);
+  for (const p of scope.querySelectorAll(":scope > .panel")) p.hidden = p.dataset.panel !== name;
+}
+
+// ----------------------------------------------------------- campaigns ----
+
+let campaignData = null;
+let selectedCampaign = null;
+
+async function campaignAction(promise) {
+  const error = await promise;
+  if (error) alert(error);
+  await loadCampaigns();
+  refresh();
+  return !error;
+}
+
+async function loadCampaigns() {
+  campaignData = await api.campaigns();
+  const names = campaignData.campaigns.map((c) => c.name);
+  if (!names.includes(selectedCampaign)) {
+    const active = campaignData.campaigns.find((c) => c.active);
+    selectedCampaign = active ? active.name : names[0];
+  }
+  renderCampaignList();
+  renderCampaignEditor();
+}
+
+function renderCampaignList() {
+  $("campaign-list").replaceChildren(...campaignData.campaigns.map((c) => {
+    const li = el("li", { class: c.name === selectedCampaign ? "selected" : "" },
+      el("span", {}, c.name, c.active ? el("span", { class: "tag" }, "selected") : null),
+      el("span", { class: "count" }, String(c.players.filter((p) => !p.ignored).length)));
+    li.addEventListener("click", () => { selectedCampaign = c.name; renderCampaignList(); renderCampaignEditor(); });
+    return li;
+  }));
+}
+
+function renderCampaignEditor() {
+  const c = campaignData.campaigns.find((x) => x.name === selectedCampaign);
+  $("campaign-editor").hidden = !c;
+  if (!c) return;
+  const name = $("campaign-name");
+  if (document.activeElement !== name) name.value = c.name;
+  const locked = campaignData.locked;
+  $("btn-use-campaign").hidden = c.active;
+  $("btn-use-campaign").disabled = locked;
+  $("btn-delete-campaign").disabled = locked && c.active;
+  $("campaign-active-note").textContent = c.active
+    ? "This campaign is selected on the Session tab, so these characters label the next transcript."
+    : "Click \"Use for next session\" to label transcripts with these characters.";
+
+  const tbody = document.querySelector("#campaign-players tbody");
+  tbody.replaceChildren(...c.players.map((p) => {
+    const input = el("input", { type: "text", value: p.character, placeholder: "Character name" });
+    input.addEventListener("change", () => campaignAction(api.set_campaign_character(c.name, p.id, input.value)));
+    const box = el("input", { type: "checkbox" });
+    box.checked = p.ignored;
+    box.addEventListener("change", () => campaignAction(api.set_campaign_ignored(c.name, p.id, box.checked)));
+    const remove = el("button", { class: "ghost", title: "Remove from this campaign" }, "Remove");
+    remove.addEventListener("click", () => campaignAction(api.remove_campaign_player(c.name, p.id)));
+    return el("tr", { class: p.ignored ? "ignored" : "" },
+      el("td", {}, p.name, p.is_bot ? el("span", { class: "tag" }, "bot") : null,
+        p.username && p.username !== p.name ? el("span", { class: "muted small" }, ` @${p.username}`) : null),
+      el("td", {}, input), el("td", {}, box), el("td", {}, remove));
+  }));
+  $("campaign-players-empty").hidden = c.players.length > 0;
+
+  const inCampaign = new Set(c.players.map((p) => p.id));
+  const available = campaignData.known_users.filter((u) => !inCampaign.has(u.id));
+  const select = $("add-player-user");
+  select.replaceChildren(
+    el("option", { value: "" }, available.length ? "Choose a Discord user" : "No other known users"),
+    ...available.map((u) => el("option", { value: u.id },
+      u.username && u.username !== u.name ? `${u.name} (@${u.username})` : u.name)));
+  select.disabled = !available.length;
+}
+
+function wireCampaigns() {
+  $("new-campaign").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = $("new-campaign-name").value.trim();
+    if (await campaignAction(api.create_campaign(name))) {
+      selectedCampaign = name;
+      $("new-campaign-name").value = "";
+      await loadCampaigns();
+    }
+  });
+  $("campaign-name").addEventListener("change", async () => {
+    const newName = $("campaign-name").value.trim();
+    const old = selectedCampaign;
+    selectedCampaign = newName;
+    if (!(await campaignAction(api.rename_campaign(old, newName)))) {
+      selectedCampaign = old;
+      renderCampaignEditor();
+    }
+  });
+  $("btn-use-campaign").addEventListener("click", () => campaignAction(api.set_campaign(selectedCampaign)));
+  $("btn-delete-campaign").addEventListener("click", () => {
+    if (!confirm(`Delete the campaign "${selectedCampaign}" and its character list?\n\nRecorded sessions and transcripts are not affected.`)) return;
+    campaignAction(api.delete_campaign(selectedCampaign));
+  });
+  $("add-player").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const uid = $("add-player-user").value;
+    if (!uid) return;
+    await campaignAction(api.set_campaign_character(selectedCampaign, uid, $("add-player-character").value));
+    $("add-player-character").value = "";
+  });
+}
+
 // ------------------------------------------------------------- wiring ----
 
 function wire() {
+  setupTabs($("main-tabs"), document.body, (tab) => { if (tab === "campaigns") loadCampaigns(); });
+  setupTabs($("settings-tabs"), $("settings-form"));
+  wireCampaigns();
   $("btn-connect").addEventListener("click", async () => {
     if ($("btn-connect").dataset.active) await api.disconnect();
     else await api.connect();
@@ -248,6 +379,7 @@ function wire() {
   $("btn-settings").addEventListener("click", async () => {
     await fillDeviceLists(last.settings);
     loadSettings(last.settings);
+    showTab($("settings-tabs"), $("settings-form"), "discord");
     $("settings").showModal();
   });
   $("settings").addEventListener("close", async () => {
@@ -260,8 +392,9 @@ function wire() {
   $("btn-forget").addEventListener("click", async () => { await api.forget_login(); $("settings").close(); });
 
   $("campaign").addEventListener("change", async () => {
-    await api.set_campaign($("campaign").value);
-    for (const row of rows.values()) row.input.blur();
+    const error = await api.set_campaign($("campaign").value);
+    if (error) alert(error);
+    $("campaign").blur();
     refresh();
   });
 

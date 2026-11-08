@@ -35,7 +35,28 @@ class Api:
         self._c.forget_login()
 
     def set_campaign(self, name):
-        self._c.set_campaign(name)
+        return self._c.set_campaign(name)
+
+    def campaigns(self):
+        return self._c.campaigns()
+
+    def create_campaign(self, name):
+        return self._c.create_campaign(name)
+
+    def rename_campaign(self, old, new):
+        return self._c.rename_campaign(old, new)
+
+    def delete_campaign(self, name):
+        return self._c.delete_campaign(name)
+
+    def set_campaign_character(self, campaign, user_id, character):
+        self._c.set_campaign_tag(campaign, user_id, character=character)
+
+    def set_campaign_ignored(self, campaign, user_id, ignored):
+        self._c.set_campaign_tag(campaign, user_id, ignored=bool(ignored))
+
+    def remove_campaign_player(self, campaign, user_id):
+        self._c.remove_campaign_tag(campaign, user_id)
 
     def set_character(self, user_id, character):
         self._c.set_tag(user_id, character=character)

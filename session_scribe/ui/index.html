@@ -8,6 +8,10 @@
 <body>
   <header>
     <h1>Session Scribe</h1>
+    <nav class="tabs" id="main-tabs">
+      <button class="tab active" data-tab="session">Session</button>
+      <button class="tab" data-tab="campaigns">Campaigns</button>
+    </nav>
     <div class="discord">
       <span id="discord-dot" class="dot"></span>
       <span id="discord-status">not connected</span>
@@ -16,12 +20,12 @@
     </div>
   </header>
 
-  <main>
+  <!-- ============================================================ Session -->
+  <main class="panel" data-panel="session">
     <section class="card">
       <div class="row">
         <label>Campaign
-          <input id="campaign" list="campaign-list" autocomplete="off">
-          <datalist id="campaign-list"></datalist>
+          <select id="campaign"></select>
         </label>
         <label class="grow">Session title (optional)
           <input id="title" placeholder="e.g. Session 12: The Well Runs Dry" autocomplete="off">
@@ -47,7 +51,8 @@
 
     <section class="card">
       <h2>In the voice channel <span id="channel-name" class="muted"></span></h2>
-      <p class="muted small">Tags are saved per campaign. Ignored users (bots are ignored by default) are left out of the transcript.</p>
+      <p class="muted small">Characters come from the selected campaign. Changes here are saved to it.
+        Ignored users (bots are ignored by default) are left out of the transcript.</p>
       <table id="people">
         <thead><tr><th></th><th>Discord user</th><th>Character</th><th>Ignore</th></tr></thead>
         <tbody></tbody>
@@ -61,41 +66,101 @@
     </section>
   </main>
 
+  <!-- ========================================================== Campaigns -->
+  <main class="panel" data-panel="campaigns" hidden>
+    <section class="card campaigns">
+      <aside>
+        <h2>Campaigns</h2>
+        <ul id="campaign-list"></ul>
+        <form id="new-campaign" class="row tight">
+          <input id="new-campaign-name" placeholder="New campaign name" autocomplete="off">
+          <button>Add</button>
+        </form>
+      </aside>
+
+      <div class="editor" id="campaign-editor">
+        <div class="row tight">
+          <label class="grow">Campaign name
+            <input id="campaign-name" autocomplete="off">
+          </label>
+          <button id="btn-use-campaign" class="secondary">Use for next session</button>
+          <button id="btn-delete-campaign" class="danger">Delete</button>
+        </div>
+        <p id="campaign-active-note" class="muted small"></p>
+
+        <h2>Players and characters</h2>
+        <table id="campaign-players">
+          <thead><tr><th>Discord user</th><th>Character</th><th>Ignore</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <p id="campaign-players-empty" class="muted small">No players yet. Add them below, or tag people on the Session tab while they're in voice.</p>
+
+        <form id="add-player" class="row tight">
+          <select id="add-player-user"></select>
+          <input id="add-player-character" placeholder="Character name" autocomplete="off">
+          <button>Add player</button>
+        </form>
+        <p class="muted small">Only Discord users who have been in a voice channel with you while Session Scribe was connected show up here.</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- =========================================================== Settings -->
   <dialog id="settings">
     <form method="dialog" id="settings-form">
       <h2>Settings</h2>
-      <p class="muted small">Create an app at discord.com/developers/applications, add
-        <code>http://localhost</code> as an OAuth2 redirect, then paste its Client ID and Client Secret here.</p>
-      <label>Discord Client ID <input name="discord_client_id" autocomplete="off"></label>
-      <label>Discord Client Secret <input name="discord_client_secret" type="password" autocomplete="off"></label>
-      <label>OAuth2 redirect URI <input name="redirect_uri"></label>
-      <label>Microphone
-        <select name="mic_device"></select>
-      </label>
-      <label>Record Discord from (the output you hear Discord through)
-        <select name="output_device"></select>
-      </label>
-      <label>Session folder <input name="data_dir"></label>
-      <label>Speech model
-        <select name="whisper_model">
-          <option value="small.en">small.en (faster, less accurate)</option>
-          <option value="medium.en">medium.en (recommended)</option>
-          <option value="large-v3">large-v3 (slowest, best)</option>
-        </select>
-      </label>
-      <label>Run transcription on
-        <select name="whisper_device">
-          <option value="auto">Automatic (graphics card if set up, otherwise CPU)</option>
-          <option value="cpu">CPU only</option>
-          <option value="cuda">NVIDIA graphics card</option>
-        </select>
-      </label>
-      <label>Spelling help: names and terms, comma separated
-        <textarea name="glossary" rows="3" placeholder="Mythropolis, Gaia's Well, ..."></textarea>
-      </label>
-      <label class="check"><input type="checkbox" name="record_mic"> Record my microphone</label>
+      <nav class="tabs" id="settings-tabs">
+        <button type="button" class="tab active" data-tab="discord">Discord</button>
+        <button type="button" class="tab" data-tab="audio">Audio</button>
+        <button type="button" class="tab" data-tab="transcription">Transcription</button>
+        <button type="button" class="tab" data-tab="storage">Storage</button>
+      </nav>
+
+      <div class="panel" data-panel="discord">
+        <p class="muted small">Create an app at discord.com/developers/applications, add
+          <code>http://localhost</code> as an OAuth2 redirect, then paste its Client ID and Client Secret here.</p>
+        <label>Discord Client ID <input name="discord_client_id" autocomplete="off"></label>
+        <label>Discord Client Secret <input name="discord_client_secret" type="password" autocomplete="off"></label>
+        <label>OAuth2 redirect URI <input name="redirect_uri"></label>
+        <div><button type="button" id="btn-forget" class="ghost">Log out of Discord</button></div>
+      </div>
+
+      <div class="panel" data-panel="audio" hidden>
+        <label>Microphone
+          <select name="mic_device"></select>
+        </label>
+        <label class="check"><input type="checkbox" name="record_mic"> Record my microphone</label>
+        <label>Record Discord from (the output you hear Discord through)
+          <select name="output_device"></select>
+        </label>
+      </div>
+
+      <div class="panel" data-panel="transcription" hidden>
+        <label>Speech model
+          <select name="whisper_model">
+            <option value="small.en">small.en (faster, less accurate)</option>
+            <option value="medium.en">medium.en (recommended)</option>
+            <option value="large-v3">large-v3 (slowest, best)</option>
+          </select>
+        </label>
+        <label>Run transcription on
+          <select name="whisper_device">
+            <option value="auto">Automatic (graphics card if set up, otherwise CPU)</option>
+            <option value="cpu">CPU only</option>
+            <option value="cuda">NVIDIA graphics card</option>
+          </select>
+        </label>
+        <label>Spelling help: names and terms, comma separated
+          <textarea name="glossary" rows="3" placeholder="Mythropolis, Gaia's Well, ..."></textarea>
+        </label>
+      </div>
+
+      <div class="panel" data-panel="storage" hidden>
+        <label>Session folder <input name="data_dir"></label>
+        <p class="muted small">Recordings and transcripts are saved here. Existing sessions aren't moved if you change it.</p>
+      </div>
+
       <div class="buttons">
-        <button type="button" id="btn-forget" class="ghost">Log out of Discord</button>
         <span class="grow"></span>
         <button value="cancel" class="secondary">Cancel</button>
         <button value="save" id="btn-save-settings">Save</button>

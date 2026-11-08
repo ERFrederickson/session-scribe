@@ -37,6 +37,9 @@ class Settings:
     last_campaign: str = "My Campaign"
     # campaign name -> discord user id -> {"character": str, "ignored": bool}
     campaigns: dict = field(default_factory=dict)
+    # Discord users seen in voice, so they can be assigned while offline:
+    # user id -> {"name": str, "username": str, "is_bot": bool}
+    known_users: dict = field(default_factory=dict)
 
 
 class Config:
@@ -86,3 +89,32 @@ class Config:
             entry["ignored"] = bool(ignored)
         self.save()
         return entry
+
+    def remove_tag(self, campaign: str, user_id: str) -> None:
+        self.settings.campaigns.get(campaign, {}).pop(user_id, None)
+        self.save()
+
+    # -- campaigns ----------------------------------------------------------
+
+    def create_campaign(self, name: str) -> None:
+        self.settings.campaigns.setdefault(name, {})
+        self.save()
+
+    def rename_campaign(self, old: str, new: str) -> None:
+        camps = self.settings.campaigns
+        camps[new] = camps.pop(old, {})
+        if self.settings.last_campaign == old:
+            self.settings.last_campaign = new
+        self.save()
+
+    def delete_campaign(self, name: str) -> None:
+        self.settings.campaigns.pop(name, None)
+        self.save()
+
+    # -- known users ----------------------------------------------------------
+
+    def remember_user(self, user_id: str, name: str, username: str | None, is_bot: bool) -> None:
+        entry = {"name": name, "username": username or "", "is_bot": bool(is_bot)}
+        if self.settings.known_users.get(user_id) != entry:
+            self.settings.known_users[user_id] = entry
+            self.save()

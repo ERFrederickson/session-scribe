@@ -82,3 +82,40 @@ dialog { background: var(--card); color: var(--text); border: 1px solid var(--li
 dialog::backdrop { background: rgba(0,0,0,.55); }
 dialog form { display: grid; gap: 10px; }
 code { background: var(--bg); padding: 1px 4px; border-radius: 4px; }
+
+/* ---- tabs ---- */
+[hidden] { display: none !important; }
+header { gap: 16px; }
+.tabs { display: flex; gap: 4px; }
+header .tabs { flex: 1; margin-left: 12px; }
+.tab {
+  background: transparent; color: var(--muted); border: 1px solid transparent;
+  border-radius: 6px; padding: 6px 12px;
+}
+.tab:hover { color: var(--text); }
+.tab.active { background: var(--card); color: var(--text); border-color: var(--line); }
+dialog .tabs { border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+dialog .panel { display: grid; gap: 10px; min-height: 220px; align-content: start; }
+
+/* ---- campaigns ---- */
+.row.tight { gap: 8px; align-items: flex-end; }
+.campaigns { display: grid; grid-template-columns: 230px 1fr; gap: 20px; }
+.campaigns aside { border-right: 1px solid var(--line); padding-right: 16px; display: grid; align-content: start; gap: 10px; }
+.campaigns ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.campaigns li {
+  padding: 7px 10px; border-radius: 6px; cursor: pointer;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.campaigns li:hover { background: var(--bg); }
+.campaigns li.selected { background: var(--bg); outline: 1px solid var(--line); }
+.campaigns li .count { color: var(--muted); font-size: 12px; }
+.campaigns aside form input { flex: 1; min-width: 0; }
+.editor { display: grid; gap: 12px; align-content: start; }
+.editor h2 { margin-top: 6px; }
+#add-player select { flex: 1; }
+#add-player input { flex: 1; }
+.campaigns aside, .campaigns .editor { min-width: 0; grid-template-columns: minmax(0, 1fr); }
+.campaigns aside form { display: flex; }
+.campaigns aside form input { width: 0; }
+th { white-space: nowrap; }
+#campaign-players td:first-child { width: 28%; }

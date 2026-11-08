@@ -45,10 +45,16 @@ Join a voice channel with someone, then double-click **`Check Setup.bat`**. It:
 
 If all of that works, you're set.
 
+## Campaigns
+
+The **Campaigns** tab keeps a list of who plays which character in each campaign. Create a campaign, then add players from the Discord users Session Scribe has seen in voice with you and type their character names. Tick **Ignore** for bots. Click **Use for next session** (or pick the campaign on the Session tab) and those characters label the next transcript automatically.
+
+Someone you've never been in voice with while the app was connected won't be in the list yet. Once they join a call, tag them on the Session tab or add them here.
+
 ## Running a session
 
-1. Pick or type the **campaign**. Each campaign keeps its own character tags.
-2. Set each person's **character** in the table (for yourself, type "GM"). Tick **Ignore** for anyone who shouldn't be transcribed.
+1. Pick the **campaign**. Its character list is applied automatically.
+2. Check the table of people in the voice channel. Fill in any missing characters (for yourself, type "GM") and tick **Ignore** for anyone who shouldn't be transcribed. Changes are saved to the campaign.
 3. Click **Record**. Use **Pause** during breaks and **Resume** when you start again.
 4. Click **End Session** when you're done. Recording stops and transcription starts right away in the background. The progress bar is under **Sessions**. Pausing never ends the session or starts transcription.
 

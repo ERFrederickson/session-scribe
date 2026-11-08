@@ -92,7 +92,8 @@ class Controller:
                     "dir": str(self.session.dir) if self.session else None,
                 },
                 "jobs": self.jobs,
-                "settings": {k: v for k, v in asdict(s).items() if k != "campaigns"},
+                "settings": {k: v for k, v in asdict(s).items()
+                             if k not in ("campaigns", "known_users")},
                 "_known_tags": len(tags),
             }
 
@@ -198,6 +199,7 @@ class Controller:
         entry = {"id": uid, "name": display_name(user, vs.get("nick")),
                  "username": user.get("username"), "is_bot": bool(user.get("bot"))}
         self.voice[uid] = entry
+        self.config.remember_user(uid, entry["name"], entry["username"], entry["is_bot"])
         self._sync_participant(uid)
 
     def _sync_participant(self, uid: str) -> None:
@@ -242,23 +244,101 @@ class Controller:
 
     # ================================================================= tags ==
 
-    def set_campaign(self, name: str) -> None:
+    def set_campaign(self, name: str) -> str | None:
+        """Switch the active campaign; its player/character tags apply at once."""
         name = (name or "").strip() or "My Campaign"
         with self.lock:
             if self.rec_state != "idle":
-                return
+                return "You can't switch campaigns while recording."
             self.campaign = name
             self.config.tags_for(name)
             self.config.settings.last_campaign = name
             self.config.save()
+        return None
 
     def set_tag(self, uid: str, character: str | None = None, ignored: bool | None = None) -> None:
+        self.set_campaign_tag(self.campaign, uid, character, ignored)
+
+    def set_campaign_tag(self, campaign: str, uid: str, character: str | None = None,
+                         ignored: bool | None = None) -> None:
         with self.lock:
-            if self.config.tag(self.campaign, uid) is None:
-                default = self._tag(uid, self.voice.get(uid, {}).get("is_bot", False))
-                self.config.set_tag(self.campaign, uid, default["character"], default["ignored"])
-            self.config.set_tag(self.campaign, uid, character, ignored)
-            self._sync_participant(uid)
+            if self.config.tag(campaign, uid) is None:
+                is_bot = self.voice.get(uid, self.config.settings.known_users.get(uid, {})).get("is_bot", False)
+                self.config.set_tag(campaign, uid, "", bool(is_bot))
+            self.config.set_tag(campaign, uid, character, ignored)
+            if campaign == self.campaign:
+                self._sync_participant(uid)
+
+    def remove_campaign_tag(self, campaign: str, uid: str) -> None:
+        with self.lock:
+            self.config.remove_tag(campaign, uid)
+            if campaign == self.campaign:
+                self._sync_participant(uid)
+
+    # ============================================================ campaigns ==
+
+    def campaigns(self) -> dict:
+        """Everything the Campaigns tab needs."""
+        with self.lock:
+            known = self.config.settings.known_users
+            out = []
+            for name in sorted(set(self.config.settings.campaigns) | {self.campaign}, key=str.lower):
+                players = []
+                for uid, tag in self.config.settings.campaigns.get(name, {}).items():
+                    user = known.get(uid) or self.voice.get(uid) or {}
+                    players.append({
+                        "id": uid,
+                        "name": user.get("name") or f"Unknown user {uid[-4:]}",
+                        "username": user.get("username", ""),
+                        "is_bot": bool(user.get("is_bot")),
+                        "character": tag.get("character", ""),
+                        "ignored": bool(tag.get("ignored")),
+                    })
+                players.sort(key=lambda p: (p["ignored"], p["name"].lower()))
+                out.append({"name": name, "active": name == self.campaign, "players": players})
+            users = [{"id": uid, **u} for uid, u in known.items()]
+            users.sort(key=lambda u: u["name"].lower())
+            return {"campaigns": out, "known_users": users,
+                    "locked": self.rec_state != "idle"}
+
+    def create_campaign(self, name: str) -> str | None:
+        name = (name or "").strip()
+        if not name:
+            return "Give the campaign a name."
+        with self.lock:
+            if name in self.config.settings.campaigns:
+                return f"There's already a campaign called {name}."
+            self.config.create_campaign(name)
+        return None
+
+    def rename_campaign(self, old: str, new: str) -> str | None:
+        new = (new or "").strip()
+        with self.lock:
+            if not new:
+                return "Give the campaign a name."
+            if new == old:
+                return None
+            if new in self.config.settings.campaigns:
+                return f"There's already a campaign called {new}."
+            if old == self.campaign and self.rec_state != "idle":
+                return "You can't rename the campaign you're recording."
+            self.config.rename_campaign(old, new)
+            if self.campaign == old:
+                self.campaign = new
+        return None
+
+    def delete_campaign(self, name: str) -> str | None:
+        with self.lock:
+            if name == self.campaign and self.rec_state != "idle":
+                return "You can't delete the campaign you're recording."
+            self.config.delete_campaign(name)
+            if self.campaign == name:
+                remaining = sorted(self.config.settings.campaigns, key=str.lower)
+                self.campaign = remaining[0] if remaining else "My Campaign"
+                self.config.tags_for(self.campaign)
+                self.config.settings.last_campaign = self.campaign
+                self.config.save()
+        return None
 
     # ============================================================ recording ==
 
@@ -444,6 +524,6 @@ class Controller:
         with self.lock:
             s = self.config.settings
             for k, v in values.items():
-                if k in s.__dataclass_fields__ and k not in ("campaigns",):
+                if k in s.__dataclass_fields__ and k not in ("campaigns", "known_users"):
                     setattr(s, k, v)
             self.config.save()
